@@ -82,7 +82,7 @@ impl Kernel {
                 mem::size_of::<i32>())
         };
         unsafe {
-            data.pagetable.copyout(addr, tmp).unwrap();
+            data.pagetable.copy_out(addr, tmp).unwrap();
         }
 
         0
