@@ -1,7 +1,7 @@
 use crate::{
     kernel::Kernel,
     poweroff,
-    proc::{myproc, resizeproc},
+    proc::myproc,
     syscall::{argaddr, argint},
     vm::{UVAddr, VAddr},
 };
@@ -35,11 +35,9 @@ impl Kernel {
     /// Returns Ok(start of new memory) on success, Err(()) on error.
     pub unsafe fn sys_sbrk(&self) -> Result<usize, ()> {
         let n = argint(0)?;
-        let addr = (*(*myproc()).data.get()).sz as i32;
-        if resizeproc(n) < 0 {
-            return Err(());
-        }
-        Ok(addr as usize)
+        let p = myproc();
+        let data = &mut *(*p).data.get();
+        data.memory.resize(n)
     }
 
     /// Pause for n clock ticks.
@@ -92,7 +90,7 @@ impl Kernel {
         let data = unsafe {&mut *(*proc).data.get() };
 
         unsafe {
-            data.pagetable.copy_out(addr, core::slice::from_raw_parts_mut(
+            data.memory.copy_out(addr, core::slice::from_raw_parts_mut(
                 &mut clk as *mut usize as *mut u8,
                 core::mem::size_of::<usize>(),
             ))?;
