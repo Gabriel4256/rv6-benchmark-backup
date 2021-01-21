@@ -76,4 +76,28 @@ impl Kernel {
         let exitcode = argint(0)?;
         poweroff::machine_poweroff(exitcode as _);
     }
+
+    pub fn sys_clock(&self) -> Result<usize, ()> {
+        let p = unsafe { argaddr(0)? };
+        let addr = UVAddr::new(p);
+
+        let mut x:usize;
+        unsafe {
+            asm!("rdcycle {}", out(reg) x);
+        };
+
+        let mut clk = x;
+
+        let proc = unsafe {myproc() };
+        let data = unsafe {&mut *(*proc).data.get() };
+
+        unsafe {
+            data.pagetable.copy_out(addr, core::slice::from_raw_parts_mut(
+                &mut clk as *mut usize as *mut u8,
+                core::mem::size_of::<usize>(),
+            ))?;
+        }
+
+        Ok(0)
+    }
 }

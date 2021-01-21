@@ -95,6 +95,7 @@ impl Kernel {
             20 => self.sys_mkdir(),
             21 => self.sys_close(),
             22 => self.sys_poweroff(),
+            23 => self.sys_clock(),
             _ => {
                 println!(
                     "{} {}: unknown sys call {}",
