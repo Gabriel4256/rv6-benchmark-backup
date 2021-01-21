@@ -1,5 +1,3 @@
-use core::{mem, slice};
-
 use crate::{
     kernel::Kernel,
     poweroff,
@@ -79,26 +77,27 @@ impl Kernel {
         poweroff::machine_poweroff(exitcode as _);
     }
 
-    pub fn sys_clock(&self) -> usize {
-        let p = unsafe { argaddr(0).unwrap() };
+    pub fn sys_clock(&self) -> Result<usize, ()> {
+        let p = unsafe { argaddr(0)? };
         let addr = UVAddr::new(p);
 
-        let mut x;
+        let mut x:usize;
         unsafe {
             asm!("rdcycle {}", out(reg) x);
         };
 
         let mut clk = x;
-        let data = unsafe { &mut *(*myproc()).data.get() } ;
-        let tmp = unsafe {
-            slice::from_raw_parts_mut(
-                &mut clk as *mut i32 as *mut u8,
-                mem::size_of::<i32>())
-        };
+
+        let proc = unsafe {myproc() };
+        let data = unsafe {&mut *(*proc).data.get() };
+
         unsafe {
-            data.pagetable.copy_out(addr, tmp).unwrap();
+            data.pagetable.copy_out(addr, core::slice::from_raw_parts_mut(
+                &mut clk as *mut usize as *mut u8,
+                core::mem::size_of::<usize>(),
+            ))?;
         }
 
-        0
+        Ok(0)
     }
 }
