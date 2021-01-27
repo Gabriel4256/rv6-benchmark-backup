@@ -90,7 +90,7 @@ impl Kernel {
         let data = unsafe {&mut *(*proc).data.get() };
 
         unsafe {
-            data.pagetable.copy_out(addr, core::slice::from_raw_parts_mut(
+            data.memory.copy_out(addr, core::slice::from_raw_parts_mut(
                 &mut clk as *mut usize as *mut u8,
                 core::mem::size_of::<usize>(),
             ))?;
