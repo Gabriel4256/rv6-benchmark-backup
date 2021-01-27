@@ -36,6 +36,8 @@ mod exec;
 mod fcntl;
 #[deny(unsafe_op_in_unsafe_fn)]
 mod file;
+
+#[deny(unsafe_op_in_unsafe_fn)]
 mod fs;
 #[deny(unsafe_op_in_unsafe_fn)]
 mod kalloc;
