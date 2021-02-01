@@ -85,8 +85,8 @@ impl Kernel {
 
         let mut clk = x;
 
-        let proc = proc.proc();
-        let data = unsafe {&mut *(*proc).data.get() };
+        // let proc = proc.proc();
+        let data = proc.deref_mut_data();
 
         unsafe {
             data.memory.copy_out(addr, core::slice::from_raw_parts_mut(
