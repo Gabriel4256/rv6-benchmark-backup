@@ -258,7 +258,7 @@ impl<T> MruEntry<T> {
         Self {
             refcnt: 0,
             data,
-            list_entry: ListEntry::new(),
+            list_entry: unsafe { ListEntry::new() },
         }
     }
 }
@@ -268,7 +268,7 @@ impl<T, const CAPACITY: usize> MruArena<T, CAPACITY> {
     pub const fn new(entries: [MruEntry<T>; CAPACITY]) -> Self {
         Self {
             entries,
-            head: ListEntry::new(),
+            head: unsafe { ListEntry::new() },
         }
     }
 
