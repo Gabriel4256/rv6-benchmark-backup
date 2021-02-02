@@ -4,7 +4,7 @@ use crate::{
     ok_or,
     plic::{plic_claim, plic_complete},
     println,
-    proc::{cpuid, proc_yield, ExecutingProc, Procstate},
+    proc::{cpuid, proc_yield, CurrentProc, Procstate},
     riscv::{
         intr_get, intr_off, intr_on, r_satp, r_scause, r_sepc, r_sip, r_stval, r_tp, w_sepc, w_sip,
         w_stvec, Sstatus, PGSIZE,
@@ -46,7 +46,7 @@ pub unsafe extern "C" fn usertrap() {
     // since we're now in the kernel.
     unsafe { w_stvec(kernelvec as _) };
 
-    let p = &mut kernel().myexproc();
+    let p = &mut kernel().current_proc();
     let data = p.deref_mut_data();
 
     // Save user program counter.
@@ -54,7 +54,7 @@ pub unsafe extern "C" fn usertrap() {
     if unsafe { r_scause() } == 8 {
         // system call
 
-        if p.proc().killed() {
+        if p.killed() {
             unsafe { kernel().procs.exit_current(-1, p) };
         }
 
@@ -67,7 +67,12 @@ pub unsafe extern "C" fn usertrap() {
         // so don't enable until done with those registers.
         unsafe { intr_on() };
         data.trap_frame_mut().a0 = ok_or!(
-            unsafe { kernel().syscall(data.trap_frame_mut().a7 as i32, &mut kernel().myexproc()) },
+            unsafe {
+                kernel().syscall(
+                    data.trap_frame_mut().a7 as i32,
+                    &mut kernel().current_proc(),
+                )
+            },
             usize::MAX
         );
     } else {
@@ -76,18 +81,18 @@ pub unsafe extern "C" fn usertrap() {
             println!(
                 "usertrap(): unexpected scause {:018p} pid={}",
                 unsafe { r_scause() } as *const u8,
-                unsafe { p.proc().pid() }
+                unsafe { p.pid() }
             );
             println!(
                 "            sepc={:018p} stval={:018p}",
                 unsafe { r_sepc() } as *const u8,
                 unsafe { r_stval() } as *const u8
             );
-            p.proc().kill();
+            p.kill();
         }
     }
 
-    if p.proc().killed() {
+    if p.killed() {
         unsafe { kernel().procs.exit_current(-1, p) };
     }
 
@@ -100,7 +105,7 @@ pub unsafe extern "C" fn usertrap() {
 }
 
 /// Return to user space.
-pub unsafe fn usertrapret(p: &mut ExecutingProc) {
+pub unsafe fn usertrapret(p: &mut CurrentProc) {
     let data = p.deref_mut_data();
 
     // We're about to switch the destination of traps from
@@ -188,9 +193,9 @@ pub unsafe fn kerneltrap() {
     // Give up the CPU if this is a timer interrupt.
     if which_dev == 2
         && !unsafe { kernel().myproc() }.is_null()
-        && unsafe { kernel().myexproc().proc().state() } == Procstate::RUNNING
+        && unsafe { kernel().current_proc().state() } == Procstate::RUNNING
     {
-        unsafe { proc_yield(&mut kernel().myexproc()) };
+        unsafe { proc_yield(&mut kernel().current_proc()) };
     }
 
     // The yield() may have caused some traps to occur,
