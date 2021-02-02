@@ -416,7 +416,7 @@ impl InodeGuard<'_> {
     /// accessing an invalid virtual address.
     pub fn read_user(&mut self, dst: UVAddr, off: u32, n: u32) -> Result<usize, ()> {
         self.read_internal(off, n, |off, src| {
-            { &mut *(kernel().current_proc().deref_mut_data()) }
+            unsafe { &mut *(*kernel().myproc()) }
                 .memory
                 .copy_out(dst + off as usize, src)
         })
@@ -519,7 +519,7 @@ impl InodeGuard<'_> {
             off,
             n,
             |off, dst| {
-                { &mut *(kernel().current_proc().deref_mut_data()) }
+                unsafe { &mut *(*kernel().myproc()) }
                     .memory
                     .copy_in(dst, src + off as usize)
             },
