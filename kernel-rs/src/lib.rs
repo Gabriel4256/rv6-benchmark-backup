@@ -30,18 +30,18 @@
 //
 // #![deny(single_use_lifetimes)]
 // #![deny(unreachable_pub)]
+// #![deny(unstable_features)]
 // #![deny(unused_lifetimes)]
 //
 // # The following lints should not be denied.
 //
-// #![deny(unstable_features)]
 // #![deny(invalid_html_tags)]
 // #![deny(missing_doc_code_examples)]
 // #![deny(missing_docs)]
 // #![deny(rustdoc)]
 #![allow(dead_code)] // TODO(https://github.com/kaist-cp/rv6/issues/120)
 #![allow(incomplete_features)]
-#![feature(llvm_asm)]
+#![feature(asm)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_wrapping_int_methods)]
 #![feature(maybe_uninit_ref)]
@@ -53,7 +53,6 @@
 #![feature(maybe_uninit_extra)]
 #![feature(generic_associated_types)]
 #![feature(unsafe_block_in_unsafe_fn)]
-#![feature(asm)]
 #![feature(variant_count)]
 
 mod arena;
