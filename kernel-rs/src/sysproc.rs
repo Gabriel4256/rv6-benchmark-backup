@@ -3,7 +3,6 @@ use crate::{
     poweroff,
     proc::CurrentProc,
     syscall::{argaddr, argint},
-    vm::{UVAddr, VAddr},
 };
 
 impl Kernel {
@@ -28,7 +27,7 @@ impl Kernel {
     /// Returns Ok(child’s PID) on success, Err(()) on error.
     pub unsafe fn sys_wait(&self, proc: &CurrentProc<'_>) -> Result<usize, ()> {
         let p = argaddr(0, proc)?;
-        Ok(unsafe { self.procs.wait(UVAddr::new(p), proc) }? as _)
+        Ok(unsafe { self.procs.wait(p.into(), proc) }? as _)
     }
 
     /// Grow process’s memory by n bytes.
@@ -75,7 +74,6 @@ impl Kernel {
 
     pub fn sys_clock(&self, proc: &CurrentProc<'_>) -> Result<usize, ()> {
         let p = argaddr(0, proc)?;
-        let addr = UVAddr::new(p);
 
         let mut x:usize;
         unsafe {
@@ -85,7 +83,7 @@ impl Kernel {
         let mut clk = x;
 
         unsafe {
-            proc.deref_mut_data().memory.copy_out(addr, core::slice::from_raw_parts_mut(
+            proc.deref_mut_data().memory.copy_out(p.into(), core::slice::from_raw_parts_mut(
                 &mut clk as *mut usize as *mut u8,
                 core::mem::size_of::<usize>(),
             ))?;
