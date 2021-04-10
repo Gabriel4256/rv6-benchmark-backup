@@ -67,26 +67,17 @@ impl Kernel {
         poweroff::machine_poweroff(exitcode as _);
     }
 
-    pub fn sys_clock(&self, proc: &ExecutingProc) -> Result<usize, ()> {
-        let p = argaddr(0, proc)?;
-        let addr = UVAddr::new(p);
+    pub fn sys_clock(&self, proc: &mut CurrentProc<'_>) -> Result<usize, ()> {
+        let p = proc.argaddr(0)?;
 
         let mut x:usize;
         unsafe {
             asm!("rdcycle {}", out(reg) x);
         };
 
-        let mut clk = x;
+        let clk = x;
 
-        let proc = proc.proc();
-        let data = unsafe {&mut *(*proc).data.get() };
-
-        unsafe {
-            data.memory.copy_out(addr, core::slice::from_raw_parts_mut(
-                &mut clk as *mut usize as *mut u8,
-                core::mem::size_of::<usize>(),
-            ))?;
-        }
+        proc.memory_mut().copy_out(p.into(), &clk)?;
 
         Ok(0)
     }
