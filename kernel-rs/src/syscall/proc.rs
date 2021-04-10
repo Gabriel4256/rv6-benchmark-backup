@@ -69,7 +69,6 @@ impl Kernel {
 
     pub fn sys_clock(&self, proc: &mut CurrentProc<'_>) -> Result<usize, ()> {
         let p = proc.argaddr(0)?;
-        let addr = p.into();
 
         let mut x: usize;
         unsafe {
@@ -77,7 +76,8 @@ impl Kernel {
         };
 
         let clk = x;
-        proc.memory_mut().copy_out(addr, &clk)?;
+
+        proc.memory_mut().copy_out(p.into(), &clk)?;
 
         Ok(0)
     }
