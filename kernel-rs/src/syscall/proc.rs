@@ -69,7 +69,7 @@ impl KernelCtx<'_, '_> {
     }
 
     pub fn sys_clock(&mut self) -> Result<usize, ()> {
-        let p = self.proc.argaddr(0)?;
+        let p = self.proc().argaddr(0)?;
 
         let mut x: usize;
         unsafe {
@@ -78,7 +78,7 @@ impl KernelCtx<'_, '_> {
 
         let clk = x;
 
-        self.proc.memory_mut().copy_out(p.into(), &clk)?;
+        self.proc_mut().memory_mut().copy_out(p.into(), &clk)?;
 
         Ok(0)
     }
