@@ -123,7 +123,7 @@ impl KernelCtx<'_, '_> {
             22 => self.sys_poweroff(),
             23 => self.sys_clock(),
             _ => {
-                self.kernel().write_fmt(format_args!(
+                self.kernel().as_ref().write_fmt(format_args!(
                     "{} {}: unknown sys call {}",
                     self.proc().pid(),
                     str::from_utf8(&self.proc().deref_data().name).unwrap_or("???"),
