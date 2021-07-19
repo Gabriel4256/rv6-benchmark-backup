@@ -121,6 +121,7 @@ impl KernelCtx<'_, '_> {
             20 => self.sys_mkdir(),
             21 => self.sys_close(),
             22 => self.sys_poweroff(),
+            23 => self.sys_clock(),
             _ => {
                 self.kernel().as_ref().write_fmt(format_args!(
                     "{} {}: unknown sys call {}",
@@ -396,6 +397,19 @@ impl KernelCtx<'_, '_> {
         // user pointer to array of two integers
         let fdarray = self.proc().argaddr(0)?.into();
         self.pipe(fdarray)?;
+        Ok(0)
+    }
+
+    pub fn sys_clock(&mut self) -> Result<usize, ()> {
+        let p = self.proc().argaddr(0)?;
+        let addr = UVAddr::from(p);
+
+        let mut x:usize;
+        unsafe {
+            asm!("rdcycle {}", out(reg) x);
+        }
+        self.proc_mut().memory_mut().copy_out(addr, &x)?;
+
         Ok(0)
     }
 }

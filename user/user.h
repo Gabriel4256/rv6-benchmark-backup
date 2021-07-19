@@ -24,6 +24,7 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int poweroff(int) __attribute__((noreturn));
+int clock(unsigned long*);
 
 // ulib.c
 int stat(const char*, struct stat*);
