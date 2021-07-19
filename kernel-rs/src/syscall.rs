@@ -402,15 +402,13 @@ impl KernelCtx<'_, '_> {
 
     pub fn sys_clock(&mut self) -> Result<usize, ()> {
         let p = self.proc().argaddr(0)?;
+        let addr = UVAddr::from(p);
 
         let mut x:usize;
         unsafe {
             asm!("rdcycle {}", out(reg) x);
-        };
-
-        let clk = x;
-
-        self.proc_mut().memory_mut().copy_out(p.into(), &clk)?;
+        }
+        self.proc_mut().memory_mut().copy_out(addr, &x)?;
 
         Ok(0)
     }
