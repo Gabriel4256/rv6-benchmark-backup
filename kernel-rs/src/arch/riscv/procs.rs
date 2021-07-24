@@ -14,8 +14,8 @@ use super::*;
 use crate::{
     arch::addr::{Addr, UVAddr, PGSIZE},
     arch::memlayout::kstack,
-    arch::riscv::intr_on,
     fs::{DefaultFs, FileSystem, FileSystemExt},
+    arch::asm::intr_on,
     hal::hal,
     kalloc::Kmem,
     kernel::KernelRef,
