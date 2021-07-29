@@ -13,7 +13,6 @@ use pin_project::pin_project;
 use super::*;
 use crate::{
     addr::{Addr, UVAddr, PGSIZE},
-    arch::memlayout::kstack,
     fs::{DefaultFs, FileSystem, FileSystemExt},
     arch::asm::intr_on,
     arch::proc::INITCODE,
@@ -21,6 +20,8 @@ use crate::{
     kalloc::Kmem,
     kernel::KernelRef,
     lock::{SpinLock, SpinLockGuard},
+    memlayout::MemLayout,
+    arch::memlayout::MemLayoutImpl,
     page::Page,
     param::{NPROC, ROOTDEV},
     util::branded::Branded,
@@ -84,7 +85,7 @@ impl Procs {
         // SAFETY: we don't move the `Procs`.
         let this = unsafe { self.get_unchecked_mut() };
         for (i, p) in this.process_pool.iter_mut().enumerate() {
-            p.data.get_mut().kstack = kstack(i);
+            p.data.get_mut().kstack = MemLayoutImpl::kstack(i);
         }
     }
 
