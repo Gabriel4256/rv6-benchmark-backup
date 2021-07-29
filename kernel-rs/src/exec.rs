@@ -7,13 +7,8 @@ use itertools::*;
 use zerocopy::{AsBytes, FromBytes};
 
 use crate::{
-<<<<<<< HEAD
-    arch::addr::{pgroundup, PAddr, PGSIZE},
     fs::{FileSystem, FileSystemExt, Path},
-=======
     addr::{pgroundup, PAddr, PGSIZE},
-    fs::{FileSystem, Path},
->>>>>>> refactoring
     hal::hal,
     page::Page,
     param::MAXARG,
