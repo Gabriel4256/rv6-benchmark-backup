@@ -23,6 +23,7 @@ extern "C" {
 }
 
 bitflags! {
+    /// Abstraction of access permissions
     pub struct AccessFlags: usize {
         /// readable
         const R = 1 << 0;
