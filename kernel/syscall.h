@@ -21,4 +21,9 @@
 #define SYS_mkdir  20
 #define SYS_close  21
 #define SYS_poweroff    22
-#define SYS_clock 23
+#define SYS_select 23
+#define SYS_getpagesize 24
+#define SYS_waitpid 25
+#define SYS_getppid 26
+#define SYS_lseek 27
+#define SYS_clock 28
