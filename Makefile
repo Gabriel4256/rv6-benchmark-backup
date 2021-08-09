@@ -252,6 +252,7 @@ UPROGS=\
 	$U/_zombie\
 	# $U/_lat_syscall\
 	$U/_lat_proc\
+	$U/_hello\
 	$U/_lat_pipe\
 	$U/_lat_ctx\
 	$U/_lat_fs\
