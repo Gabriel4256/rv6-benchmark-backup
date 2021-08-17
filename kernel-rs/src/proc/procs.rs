@@ -14,15 +14,16 @@ use super::*;
 use crate::{
     addr::{Addr, UVAddr, PGSIZE},
     fs::{DefaultFs, FileSystem, FileSystemExt},
-    arch::asm::intr_on,
-    arch::proc::INITCODE,
-    arch::proc::UserProcInitImpl,
+    arch::{
+        asm::intr_on,
+        memlayout::MemLayoutImpl,
+        proc::{UserProcInit, INITCODE},
+    },
     hal::hal,
     kalloc::Kmem,
     kernel::KernelRef,
     lock::{SpinLock, SpinLockGuard},
     memlayout::MemLayout,
-    arch::memlayout::MemLayoutImpl,
     page::Page,
     param::{NPROC, ROOTDEV},
     util::branded::Branded,
@@ -50,7 +51,7 @@ pub struct Procs {
     _marker: PhantomPinned,
 }
 
-pub trait UserProcInit {
+pub trait UserProcInitiator {
     /// Initialize regiters for running first user process.
     fn init_reg(trap_frame: &mut TrapFrame);
 }
@@ -133,7 +134,7 @@ impl Procs {
             unsafe { (*data.trap_frame).sp = PGSIZE };
 
             unsafe {
-                UserProcInitImpl::init_reg(&mut *data.trap_frame);
+                UserProcInit::init_reg(&mut *data.trap_frame);
             }
 
             let name = b"initcode\x00";
@@ -468,9 +469,9 @@ impl<'id, 's> ProcsRef<'id, 's> {
 
     // get the pid of current process's parent
     pub fn getppid(&mut self, ctx: &mut KernelCtx<'id, '_>) -> Pid {
-        let mut parent_guard = self.wait_guard();        
+        let mut parent_guard = self.wait_guard();
         let parent = *ctx.proc().get_mut_parent(&mut parent_guard);
-        
+ 
         let lock = unsafe { (*parent).info.lock() };
         lock.pid
     }
