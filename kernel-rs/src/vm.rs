@@ -5,9 +5,11 @@ use zerocopy::{AsBytes, FromBytes};
 
 use crate::{
     addr::{pgrounddown, pgroundup, Addr, KVAddr, PAddr, UVAddr, VAddr, MAXVA, PGSIZE},
-    arch::memlayout::MemLayoutImpl,
-    arch::vm::{PageInitImpl, PageTableEntryImpl, PteFlagsImpl},
     fs::InodeGuard,
+    arch::{
+        memlayout::MemLayoutImpl,
+        vm::{PageInit, PageTableEntry, PteFlags},
+    },
     kalloc::Kmem,
     lock::SpinLock,
     memlayout::MemLayout,
@@ -41,7 +43,7 @@ bitflags! {
 /// If self.is_table() is true, then it must refer to a valid page-table page.
 ///
 /// inner value should be initially 0, which satisfies the invariant.
-pub trait PageTableEntry: Default {
+pub trait PageTableEntryDesc: Default {
     type EntryFlags;
 
     fn get_flags(&self) -> Self::EntryFlags;
@@ -84,8 +86,7 @@ pub trait PageTableEntry: Default {
         }
     }
 }
-
-pub trait PageInit {
+pub trait PageInitiator {
     fn user_page_init<A: VAddr>(
         page_table: &mut PageTable<A>,
         trap_frame: PAddr,
@@ -100,18 +101,14 @@ pub trait PageInit {
     unsafe fn switch_page_table_and_enable_mmu(page_table_base: usize);
 }
 
-pub trait PteFlags {
-    fn from_access_flags(f: AccessFlags) -> Self;
-}
-
-const PTE_PER_PT: usize = PGSIZE / mem::size_of::<PageTableEntryImpl>();
+const PTE_PER_PT: usize = PGSIZE / mem::size_of::<PageTableEntry>();
 
 /// # Safety
 ///
 /// It should be converted to a Page by Page::from_usize(self.inner.as_ptr() as _)
 /// without breaking the invariants of Page.
 pub struct RawPageTable {
-    inner: [PageTableEntryImpl; PTE_PER_PT],
+    inner: [PageTableEntry; PTE_PER_PT],
 }
 
 impl RawPageTable {
@@ -147,7 +144,7 @@ impl RawPageTable {
     /// Return a `PageTableEntry` if the `index`th entry refers to a data page.
     /// Return a `PageTableEntry` if the `index`th entry is invalid.
     /// Panic if the `index`th entry refers to a page-table page.
-    fn get_entry_mut(&mut self, index: usize) -> &mut PageTableEntryImpl {
+    fn get_entry_mut(&mut self, index: usize) -> &mut PageTableEntry {
         let pte = &mut self.inner[index];
         assert!(!pte.is_table());
         pte
@@ -214,7 +211,7 @@ impl<A: VAddr> PageTable<A> {
         &mut self,
         va: A,
         allocator: Option<Pin<&SpinLock<Kmem>>>,
-    ) -> Option<&mut PageTableEntryImpl> {
+    ) -> Option<&mut PageTableEntry> {
         assert!(va.into_usize() < MAXVA, "PageTable::get_mut");
         // SAFETY: self.ptr uniquely refers to a valid RawPageTable
         // according to the invariant.
@@ -229,7 +226,7 @@ impl<A: VAddr> PageTable<A> {
         &mut self,
         va: A,
         pa: PAddr,
-        perm: PteFlagsImpl,
+        perm: PteFlags,
         allocator: Pin<&SpinLock<Kmem>>,
     ) -> Result<(), ()> {
         let a = pgrounddown(va.into_usize());
@@ -248,7 +245,7 @@ impl<A: VAddr> PageTable<A> {
         va: A,
         size: usize,
         pa: PAddr,
-        perm: PteFlagsImpl,
+        perm: PteFlags,
         allocator: Pin<&SpinLock<Kmem>>,
     ) -> Result<(), ()> {
         let start = pgrounddown(va.into_usize());
@@ -329,7 +326,7 @@ impl UserMemory {
             mem::forget(page_table);
         });
 
-        PageInitImpl::user_page_init(&mut page_table, trap_frame, allocator).ok()?;
+        PageInit::user_page_init(&mut page_table, trap_frame, allocator).ok()?;
 
         let mut memory = Self {
             page_table: scopeguard::ScopeGuard::into_inner(page_table),
@@ -344,9 +341,7 @@ impl UserMemory {
             memory
                 .push_page(
                     page,
-                    PteFlagsImpl::from_access_flags(
-                        AccessFlags::R | AccessFlags::W | AccessFlags::X | AccessFlags::U,
-                    ),
+                    (AccessFlags::R | AccessFlags::W | AccessFlags::X | AccessFlags::U).into(),
                     allocator,
                 )
                 .map_err(|page| allocator.free(page))
@@ -433,9 +428,7 @@ impl UserMemory {
             page.write_bytes(0);
             this.push_page(
                 page,
-                PteFlagsImpl::from_access_flags(
-                    AccessFlags::R | AccessFlags::W | AccessFlags::X | AccessFlags::U,
-                ),
+                (AccessFlags::R | AccessFlags::W | AccessFlags::X | AccessFlags::U).into(),
                 allocator,
             )
             .map_err(|page| allocator.free(page))?;
@@ -598,7 +591,7 @@ impl UserMemory {
     fn push_page(
         &mut self,
         page: Page,
-        perm: PteFlagsImpl,
+        perm: PteFlags,
         allocator: Pin<&SpinLock<Kmem>>,
     ) -> Result<(), Page> {
         let pa = page.into_usize();
@@ -667,7 +660,7 @@ impl KernelMemory {
             mem::forget(page_table);
         });
 
-        PageInitImpl::kernel_page_init(&mut page_table, allocator).ok()?;
+        PageInit::kernel_page_init(&mut page_table, allocator).ok()?;
 
         // Map kernel text executable and read-only.
         // SAFETY: we assume that reading the address of etext is safe.
@@ -677,7 +670,7 @@ impl KernelMemory {
                 MemLayoutImpl::KERNBASE.into(),
                 et - MemLayoutImpl::KERNBASE,
                 MemLayoutImpl::KERNBASE.into(),
-                PteFlagsImpl::from_access_flags(AccessFlags::R | AccessFlags::X),
+                (AccessFlags::R | AccessFlags::X).into(),
                 allocator,
             )
             .ok()?;
@@ -688,7 +681,7 @@ impl KernelMemory {
                 et.into(),
                 MemLayoutImpl::PHYSTOP - et,
                 et.into(),
-                PteFlagsImpl::from_access_flags(AccessFlags::R | AccessFlags::W),
+                (AccessFlags::R | AccessFlags::W).into(),
                 allocator,
             )
             .ok()?;
@@ -704,7 +697,7 @@ impl KernelMemory {
                     va.into(),
                     PGSIZE,
                     pa.into(),
-                    PteFlagsImpl::from_access_flags(AccessFlags::R | AccessFlags::W),
+                    (AccessFlags::R | AccessFlags::W).into(),
                     allocator,
                 )
                 .ok()?;
@@ -718,7 +711,7 @@ impl KernelMemory {
     /// Switch h/w page table register to the kernel's page table, and enable paging.
     pub unsafe fn init_register(&self) {
         unsafe {
-            PageInitImpl::switch_page_table_and_enable_mmu(self.page_table.as_usize());
+            PageInit::switch_page_table_and_enable_mmu(self.page_table.as_usize());
         }
     }
 }
