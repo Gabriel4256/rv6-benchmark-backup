@@ -16,14 +16,13 @@ use crate::{
     fs::{DefaultFs, FileSystem, FileSystemExt},
     arch::{
         asm::intr_on,
-        memlayout::MemLayoutImpl,
         proc::{UserProcInit, INITCODE},
     },
     hal::hal,
     kalloc::Kmem,
     kernel::KernelRef,
     lock::{SpinLock, SpinLockGuard},
-    memlayout::MemLayout,
+    memlayout::kstack,
     page::Page,
     param::{NPROC, ROOTDEV},
     util::branded::Branded,
@@ -92,7 +91,7 @@ impl Procs {
         // SAFETY: we don't move the `Procs`.
         let this = unsafe { self.get_unchecked_mut() };
         for (i, p) in this.process_pool.iter_mut().enumerate() {
-            p.data.get_mut().kstack = MemLayoutImpl::kstack(i);
+            p.data.get_mut().kstack = kstack(i);
         }
     }
 
@@ -471,7 +470,7 @@ impl<'id, 's> ProcsRef<'id, 's> {
     pub fn getppid(&mut self, ctx: &mut KernelCtx<'id, '_>) -> Pid {
         let mut parent_guard = self.wait_guard();
         let parent = *ctx.proc().get_mut_parent(&mut parent_guard);
- 
+
         let lock = unsafe { (*parent).info.lock() };
         lock.pid
     }
