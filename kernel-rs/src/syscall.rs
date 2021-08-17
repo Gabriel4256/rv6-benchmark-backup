@@ -14,7 +14,7 @@ use crate::{
     arch::poweroff,
     arch::timer::Timer,
     fs::{FcntlFlags, FileSystem, FileSystemExt, InodeType, Path},
-    file::{FileType, RcFile, SelectEvent, SeekWhence},
+    file::{RcFile, SelectEvent, SeekWhence},
     hal::hal,
     ok_or,
     page::{getpagesize, Page},
@@ -168,7 +168,7 @@ impl KernelCtx<'_, '_> {
     pub fn sys_sleep(&self) -> Result<usize, ()> {
         let n = self.proc().argint(0)?;
         assert!(n >= 0);
-        Timer::spin_for(&self, n as usize)?;
+        Timer::spin_for(self, n as usize)?;
         Ok(0)
     }
 
@@ -187,7 +187,7 @@ impl KernelCtx<'_, '_> {
     }
 
     pub fn sys_uptime_as_micro(&self) -> Result<usize, ()> {
-        todo!()
+        Timer::uptime_as_micro()
     }
 
     /// Shutdowns this machine, discarding all unsaved data. No return.
@@ -428,9 +428,8 @@ impl KernelCtx<'_, '_> {
         drop(ticks);
 
         let mut rfds = [0u8; 1024 / 8];
-        // let mut rfds_clone = [0u8; 1024 / 8];
-        // let mut wfds = [0u8; 1024 / 8];
-        // let mut efds = [0u8; 1024 / 8];
+        let wfds = [0u8; 1024 / 8];
+        let efds = [0u8; 1024 / 8];
 
         if read_fds != 0 {
             unsafe {
@@ -448,6 +447,7 @@ impl KernelCtx<'_, '_> {
             unimplemented!("Handling for exceptional fd set has not been implemented yet");
         }
 
+        // the number of fds that are ready
         let mut ready_cnt = 0;
 
         loop {
@@ -456,28 +456,26 @@ impl KernelCtx<'_, '_> {
                 let idx = (fd / 8) as usize;
                 let mask = 1 << (fd % 8);
 
-                // TODO: support other kind of fd sets
                 if rfds[idx] & mask != 0 {
-                    if self.check(fd as usize, SelectEvent::Read)? {
+                    let f = self
+                        .proc()
+                        .deref_data()
+                        .open_files
+                        .get(fd as usize)
+                        .ok_or(())?
+                        .as_ref()
+                        .ok_or(())?;
+
+                    if unsafe { (*(f as *const RcFile)).is_ready(SelectEvent::Read)? } {
                         ready_cnt += 1;
                     } else {
+                        // If the fd is not ready, clear the bit.
                         rfds[idx] &= !mask;
                     }
                 }
             }
 
             if ready_cnt > 0 {
-                for fd in 0..nfds + 1 {
-                    let idx = (fd / 8) as usize;
-                    let mask = 1 << (fd % 8);
-
-                    // TODO: support other kind of fd sets
-                    if rfds[idx] & mask != 0 {
-                        if !self.check(fd as usize, SelectEvent::Read)? {
-                            rfds[idx] &= !mask;
-                        }
-                    }
-                }
                 break;
             }
 
@@ -492,40 +490,25 @@ impl KernelCtx<'_, '_> {
             drop(ticks);
         }
 
-        self.proc_mut()
-            .memory_mut()
-            .copy_out(read_fds.into(), &rfds)?;
-
-        Ok(ready_cnt)
-    }
-
-    fn check(&mut self, fd: usize, event: SelectEvent) -> Result<bool, ()> {
-        let f = self
-            .proc()
-            .deref_data()
-            .open_files
-            .get(fd)
-            .ok_or(())?
-            .as_ref()
-            .ok_or(())?;
-
-        let f = unsafe { &*(f as *const RcFile) };
-
-        match &f.typ {
-            FileType::Pipe { pipe } => {
-                // pipe-empty
-                if pipe.is_ready(event) {
-                    return Ok(true);
-                }
-            }
-            FileType::Inode { .. } => {
-                unimplemented!()
-            }
-            FileType::Device { .. } => unimplemented!(""),
-            FileType::None => panic!("Syscall::sys_select"),
+        if read_fds != 0 {
+            self.proc_mut()
+                .memory_mut()
+                .copy_out(read_fds.into(), &rfds)?;
         }
 
-        Ok(false)
+        if write_fds != 0 {
+            self.proc_mut()
+                .memory_mut()
+                .copy_out(write_fds.into(), &wfds)?;
+        }
+
+        if err_fds != 0 {
+            self.proc_mut()
+                .memory_mut()
+                .copy_out(err_fds.into(), &efds)?;
+        }
+
+        Ok(ready_cnt)
     }
 
     pub fn sys_getpagesize(&mut self) -> Result<usize, ()> {
@@ -538,7 +521,7 @@ impl KernelCtx<'_, '_> {
         Ok(self
             .kernel()
             .procs()
-            .waitpid(pid.into(), stat.into(), self)? as _)
+            .waitpid(pid, stat.into(), self)? as _)
     }
 
     pub fn sys_getppid(&mut self) -> Result<usize, ()> {
