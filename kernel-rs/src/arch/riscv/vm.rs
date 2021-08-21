@@ -1,13 +1,15 @@
 use bitflags::bitflags;
 
+use super::RiscV;
 use crate::{
     addr::{PAddr, PGSIZE},
+    arch::interface::PageInitiator,
     arch::{
         addr::{pa2pte, pte2pa},
         asm::{make_satp, sfence_vma, w_satp},
         memlayout::{FINISHER, PLIC},
     },
-    vm::{AccessFlags, PageInitiator, PageTableEntryDesc, RawPageTable},
+    vm::{AccessFlags, PageTableEntryDesc, RawPageTable},
 };
 
 bitflags! {
@@ -116,19 +118,14 @@ impl PageTableEntryDesc for RiscVPageTableEntry {
     }
 }
 
-pub struct RiscVPageInit;
-
-impl RiscVPageInit {
+impl RiscV {
     // Device mappings in memory.
     // SiFive Test Finisher MMIO, PLIC.
     const DEV_MAPPING: [(usize, usize); 2] = [(FINISHER, PGSIZE), (PLIC, 0x400000)];
 }
 
-pub type PageInit = RiscVPageInit;
-
-impl PageInitiator for RiscVPageInit {
-
-    fn kernel_page_dev_mappings() ->&'static [(usize, usize)]{
+impl PageInitiator for RiscV {
+    fn kernel_page_dev_mappings() -> &'static [(usize, usize)] {
         &Self::DEV_MAPPING[0..2]
     }
 
