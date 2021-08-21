@@ -11,17 +11,17 @@ use cstr_core::CStr;
 
 use crate::{
     addr::{Addr, UVAddr},
+    arch::interface::TimeManager,
     arch::poweroff,
-    arch::timer::Timer,
     fs::{FcntlFlags, FileSystem, FileSystemExt, InodeType, Path},
-    file::{RcFile, SelectEvent, SeekWhence},
+    file::{RcFile, SeekWhence, SelectEvent},
+    arch::TargetArch,
     hal::hal,
     ok_or,
     page::{Page, PGSIZE},
     param::{MAXARG, MAXPATH},
     proc::{CurrentProc, KernelCtx},
     some_or,
-    timer::TimeManager,
 };
 
 impl CurrentProc<'_, '_> {
@@ -194,10 +194,10 @@ impl KernelCtx<'_, '_> {
         Ok(*self.kernel().ticks().lock() as usize)
     }
 
-    /// Return how much time has passed since start, 
+    /// Return how much time has passed since start,
     /// in microseconds.
     pub fn sys_uptime_as_micro(&self) -> Result<usize, ()> {
-        Timer::uptime_as_micro()
+        TargetArch::uptime_as_micro()
     }
 
     /// Shutdowns this machine, discarding all unsaved data. No return.
