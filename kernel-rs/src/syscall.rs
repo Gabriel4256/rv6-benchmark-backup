@@ -12,9 +12,9 @@ use cstr_core::CStr;
 use crate::{
     addr::{Addr, UVAddr},
     arch::interface::TimeManager,
-    arch::poweroff,
     fs::{FcntlFlags, FileSystem, FileSystemExt, InodeType, Path},
-    file::{RcFile, SeekWhence, SelectEvent},
+    file::{RcFile, SelectEvent, SeekWhence},
+    arch::interface::PowerOff,
     arch::TargetArch,
     hal::hal,
     ok_or,
@@ -203,7 +203,7 @@ impl KernelCtx<'_, '_> {
     /// Shutdowns this machine, discarding all unsaved data. No return.
     pub fn sys_poweroff(&self) -> Result<usize, ()> {
         let exitcode = self.proc().argint(0)?;
-        poweroff::machine_poweroff(exitcode as _);
+        TargetArch::machine_poweroff(exitcode as _);
     }
 
     /// Return a new file descriptor referring to the same file as given fd.
