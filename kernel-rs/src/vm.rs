@@ -5,11 +5,9 @@ use zerocopy::{AsBytes, FromBytes};
 
 use crate::{
     addr::{pgrounddown, pgroundup, Addr, KVAddr, PAddr, UVAddr, VAddr, MAXVA, PGSIZE},
-    fs::InodeGuard,
     arch::interface::Arch,
-    arch::{
-        vm::{PageTableEntry, PteFlags},
-    },
+    arch::vm::{PageTableEntry, PteFlags},
+    fs::InodeGuard,
     kalloc::Kmem,
     lock::SpinLock,
     memlayout::{kstack, PHYSTOP, TRAMPOLINE, TRAPFRAME},
