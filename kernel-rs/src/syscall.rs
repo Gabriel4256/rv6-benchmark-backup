@@ -11,7 +11,7 @@ use cstr_core::CStr;
 
 use crate::{
     addr::{Addr, UVAddr},
-    arch::interface::TimeManager,
+    arch::interface::{TimeManager, TrapFrameManager},
     fs::{FcntlFlags, FileSystem, FileSystemExt, InodeType, Path},
     file::{RcFile, SelectEvent, SeekWhence},
     arch::interface::PowerOff,
@@ -50,7 +50,7 @@ impl CurrentProc<'_, '_> {
     }
 
     fn argraw(&self, n: usize) -> usize {
-        self.trap_frame().get_param_reg(n)
+        self.trap_frame().get_param_reg(n.into())
     }
 
     /// Fetch the nth 32-bit system call argument.
