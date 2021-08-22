@@ -6,8 +6,9 @@ use zerocopy::{AsBytes, FromBytes};
 use crate::{
     addr::{pgrounddown, pgroundup, Addr, KVAddr, PAddr, UVAddr, VAddr, MAXVA, PGSIZE},
     arch::interface::Arch,
-    arch::vm::{PageTableEntry, PteFlags},
     fs::InodeGuard,
+    arch::interface::{PageTableEntryDesc, PageTableManager},
+    arch::TargetArch,
     kalloc::Kmem,
     lock::SpinLock,
     memlayout::{kstack, PHYSTOP, TRAMPOLINE, TRAPFRAME},
@@ -16,6 +17,9 @@ use crate::{
     proc::KernelCtx,
 };
 use crate::fs::DefaultFs;
+
+type PageTableEntry = <TargetArch as PageTableManager>::PageTableEntry;
+type PteFlags = <PageTableEntry as PageTableEntryDesc>::EntryFlags;
 
 extern "C" {
     // kernel.ld sets this to end of kernel code.
@@ -43,55 +47,6 @@ bitflags! {
         const RWU = Self::RW.bits | Self::U.bits;
         const RXU = Self::RX.bits | Self::U.bits;
         const RWXU = Self::RWX.bits | Self::U.bits;
-    }
-}
-
-/// # Safety
-///
-/// If self.is_table() is true, then it must refer to a valid page-table page.
-///
-/// inner value should be initially 0, which satisfies the invariant.
-pub trait PageTableEntryDesc: Default {
-    type EntryFlags;
-
-    fn get_flags(&self) -> Self::EntryFlags;
-
-    fn flag_intersects(&self, flag: Self::EntryFlags) -> bool;
-
-    fn get_pa(&self) -> PAddr;
-
-    fn is_valid(&self) -> bool;
-
-    fn is_user(&self) -> bool;
-
-    fn is_table(&self) -> bool;
-
-    fn is_data(&self) -> bool;
-
-    /// Make the entry refer to a given page-table page.
-    fn set_table(&mut self, page: *mut RawPageTable);
-
-    /// Make the entry refer to a given address with a given permission.
-    /// The permission should include at lease one of R, W, and X not to be
-    /// considered as an entry referring a page-table page.
-    fn set_entry(&mut self, pa: PAddr, perm: Self::EntryFlags);
-
-    /// Make the entry inaccessible by user processes by clearing PteFlags::U.
-    fn clear_user(&mut self);
-
-    /// Invalidate the entry by making every bit 0.
-    fn invalidate(&mut self);
-
-    /// Return `Some(..)` if it refers to a page-table page.
-    /// Return `None` if it refers to a data page.
-    /// Return `None` if it is invalid.
-    fn as_table_mut(&mut self) -> Option<&mut RawPageTable> {
-        if self.is_table() {
-            // SAFETY: invariant.
-            Some(unsafe { &mut *(self.get_pa().into_usize() as *mut _) })
-        } else {
-            None
-        }
     }
 }
 
@@ -777,7 +732,7 @@ impl<A: Arch> KernelMemory<A> {
     ///
     /// `self.page_table` must contain base address for a valid page table.
     pub unsafe fn init_register(&self) {
-        // Safety: `self.page_table` contains valid page table address.
+        // SAFETY: `self.page_table` contains valid page table address.
         unsafe {
             A::switch_page_table_and_enable_mmu(self.page_table.as_usize());
         }
