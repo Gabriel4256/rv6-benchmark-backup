@@ -11,11 +11,10 @@ use cstr_core::CStr;
 
 use crate::{
     addr::{Addr, UVAddr},
-    arch::interface::{TimeManager, TrapFrameManager},
     fs::{FcntlFlags, FileSystem, FileSystemExt, InodeType, Path},
     file::{RcFile, SelectEvent, SeekWhence},
-    arch::interface::PowerOff,
     arch::TargetArch,
+    arch::interface::{PowerOff, TimeManager, TrapFrameManager},
     hal::hal,
     ok_or,
     page::{Page, PGSIZE},

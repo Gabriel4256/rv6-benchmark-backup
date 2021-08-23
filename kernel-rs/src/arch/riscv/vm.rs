@@ -4,10 +4,10 @@ use super::RiscV;
 use crate::{
     addr::{PAddr, PGSIZE},
     arch::interface::{IPageTableEntry, PageTableManager},
+    arch::memlayout::{FINISHER, PLIC},
     arch::{
         addr::{pa2pte, pte2pa, PLNUM},
         asm::{make_satp, sfence_vma, w_satp},
-        memlayout::{FINISHER, PLIC},
     },
     vm::{AccessFlags, RawPageTable},
 };
