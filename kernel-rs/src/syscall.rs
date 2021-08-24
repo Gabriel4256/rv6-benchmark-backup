@@ -405,19 +405,6 @@ impl KernelCtx<'_, '_> {
         Ok(0)
     }
 
-    pub fn sys_clock(&mut self) -> Result<usize, ()> {
-        let p = self.proc().argaddr(0)?;
-        let addr = UVAddr::from(p);
-
-        let mut x:usize;
-        unsafe {
-            asm!("rdcycle {}", out(reg) x);
-        }
-        self.proc_mut().memory_mut().copy_out(addr, &x)?;
-
-        Ok(0)
-    }
-
     /* Check the first NFDS descriptors each in READFDS (if not NULL) for read
     readiness, in WRITEFDS (if not NULL) for write readiness, and in EXCEPTFDS
     (if not NULL) for exceptional conditions.  If TIMEOUT is not NULL, time out
@@ -555,5 +542,15 @@ impl KernelCtx<'_, '_> {
         };
         // SAFETY: `lseek` will not access proc's open_files.
         unsafe { (*(f as *const RcFile)).lseek(offset, whence, self) }
+    }
+
+    pub fn sys_clock(&mut self) -> Result<usize, ()> {
+        let p = self.proc().argaddr(0)?;
+        let addr = UVAddr::from(p);
+
+        let clk = TargetArch::r_cycle();
+        self.proc_mut().memory_mut().copy_out(addr, &clk)?;
+
+        Ok(0)
     }
 }
