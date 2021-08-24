@@ -57,10 +57,10 @@ entry("sbrk");
 entry("sleep");
 entry("uptime");
 entry("poweroff");
-entry("clock");
 entry("select");
 entry("getpagesize");
 entry("waitpid");
 entry("getppid");
 entry("lseek");
-entry("uptime_as_micro")
+entry("uptime_as_micro");
+entry("clock");
