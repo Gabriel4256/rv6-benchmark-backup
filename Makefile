@@ -42,7 +42,8 @@ RUST_MODE = debug
 endif
 
 ifeq ($(RUST_MODE),release)
-CARGOFLAGS += --release
+OPTFLAGS = -O2
+CARGOFLAGS = --release
 endif
 
 # OBJS = \
@@ -122,6 +123,10 @@ CFLAGS += -ffreestanding -fno-common -nostdlib
 CFLAGS += -I.
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 
+ifeq ($(BENCH), yes)
+CFLAGS += -DBENCH
+endif
+
 ifeq ($(USERTEST),yes)
 CFLAGS += -DUSERTEST
 endif
@@ -132,10 +137,6 @@ endif
 
 ifdef ITER
 CFLAGS += -D ITER=$(ITER)
-endif
-
-ifeq ($(BENCH), yes)
-CFLAGS += -DBENCH
 endif
 
 # Disable PIE when possible (for Ubuntu 16.10 toolchain)
@@ -185,6 +186,9 @@ $U/usys.S : $U/usys.pl
 $U/usys.o : $U/usys.S
 	$(CC) $(CFLAGS) -c -o $U/usys.o $U/usys.S
 
+# $U/usertests.o: $U/usertests.c
+# 	$(CC) $(CFLAGS) -c -o $U/usertests.o $U/usertests.c
+
 $U/_forktest: $U/forktest.o $(ULIB)
 	# forktest has less library code linked in - needs to be small
 	# in order to be able to max out the proc table.
@@ -197,8 +201,8 @@ $(LM)/%.o: $(LM)/%.c
 
 $U/_%: $(LM)/%.o $(ULIB) $(LM)/lmbench.a $U/rand.o
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o $@ $^ $(LM)/lmbench.a
-	$(OBJDUMP) -S $@ > $*.asm
-	$(OBJDUMP) -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $*.sym
+	$(OBJDUMP) -S $@ > $U/$*.asm
+	$(OBJDUMP) -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $U/$*.sym
 
 AR=ar
 ARCREATE=cr
