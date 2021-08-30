@@ -42,6 +42,7 @@ RUST_MODE = debug
 endif
 
 ifeq ($(RUST_MODE),release)
+# O3 causes a crash while creating img.
 OPTFLAGS = -O2
 CARGOFLAGS = --release
 endif
@@ -185,9 +186,6 @@ $U/usys.S : $U/usys.pl
 
 $U/usys.o : $U/usys.S
 	$(CC) $(CFLAGS) -c -o $U/usys.o $U/usys.S
-
-# $U/usertests.o: $U/usertests.c
-# 	$(CC) $(CFLAGS) -c -o $U/usertests.o $U/usertests.c
 
 $U/_forktest: $U/forktest.o $(ULIB)
 	# forktest has less library code linked in - needs to be small
