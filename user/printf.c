@@ -180,26 +180,26 @@ fprintf(int fd, const char *fmt, ...)
   va_end(ap);
 }
 
-// void
-// printf(const char *fmt, ...)
-// {
-//   va_list ap;
-
-//   va_start(ap, fmt);
-//   vprintf(1, fmt, ap);
-// }
-
 void
-printf(const char* fmt, ...)
+printf(const char *fmt, ...)
 {
-  va_list va;
+  va_list ap;
 
-  va_start(va, fmt);
-  char buffer[1];
-  _vsnprintf(_out_char, buffer, (size_t)-1, fmt, va, 0);
-  va_end(va);
-  return;
+  va_start(ap, fmt);
+  vprintf(1, fmt, ap);
 }
+
+// void
+// printf(const char* fmt, ...)
+// {
+//   va_list va;
+
+//   va_start(va, fmt);
+//   char buffer[1];
+//   _vsnprintf(_out_char, buffer, (size_t)-1, fmt, va, 0);
+//   va_end(va);
+//   return;
+// }
 
 // newly added
 void _putchar(char c){
