@@ -67,6 +67,7 @@ vprintf(int fd, const char *fmt, va_list ap)
       if(c == 'd'){
         printint(fd, va_arg(ap, int), 10, 1);
       } else if(c == 'l') {
+        i++;
         printint(fd, va_arg(ap, uint64), 10, 0);
       } else if(c == 'x') {
         printint(fd, va_arg(ap, int), 16, 0);
